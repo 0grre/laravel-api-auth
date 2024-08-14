@@ -2,7 +2,9 @@
 
 namespace Ogrre\ApiAuth;
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\ServiceProvider;
+use Ogrre\ApiAuth\Exceptions\ApiAuthExceptionHandler;
 
 class ApiAuthServiceProvider extends ServiceProvider
 {
@@ -13,13 +15,15 @@ class ApiAuthServiceProvider extends ServiceProvider
     {
         $this->loadRoutesFrom(__DIR__.'/routes/api.php');
 
-        $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'laravel-api-auth');
+        $this->loadTranslationsFrom(__DIR__.'/resources/lang', 'laravel-api-auth');
 
         $this->publishes([
-            __DIR__.'/../resources/lang' => resource_path('lang/vendor/laravel-api-auth'),
-            __DIR__.'/../config/api-auth.php' => config_path('api-auth.php'),
+            __DIR__.'/config/api-auth.php' => config_path('api-auth.php'),
         ], 'laravel-api-auth');
 
+        $this->app->singleton(ExceptionHandler::class, ApiAuthExceptionHandler::class);
+
+        // Optional: Publish the custom reset password notification
         $this->publishes([
             __DIR__.'/Notifications/ApiResetPasswordNotification.php' => app_path('Notifications/ApiResetPasswordNotification.php'),
         ], 'laravel-api-auth-custom-reset');
@@ -30,9 +34,12 @@ class ApiAuthServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Merge configuration
         $this->mergeConfigFrom(
-            __DIR__.'/../config/api-auth.php', 'api-auth'
+            __DIR__.'/config/api-auth.php', 'api-auth'
         );
+
+        $this->app->bind('ApiAuthUser', function ($app) {
+            return new (config('auth.providers.users.model'));
+        });
     }
 }

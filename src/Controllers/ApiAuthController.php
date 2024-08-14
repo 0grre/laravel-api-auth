@@ -2,17 +2,51 @@
 
 namespace Ogrre\ApiAuth\Controllers;
 
-use App\Http\Controllers\Controller;
+use Carbon\Carbon;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
-use App\Models\User;
+use Ogrre\ApiAuth\Exceptions\ValidationExceptionResponse;
 
-class AuthController extends Controller
+class ApiAuthController
 {
+    use AuthorizesRequests, ValidatesRequests;
+
+    protected $userModel;
+
+    /**
+     * ApiAuthController constructor.
+     */
+    public function __construct()
+    {
+        $this->userModel = app('ApiAuthUser');
+    }
+
+    /**
+     * Format and return an error response.
+     *
+     * @param int $code
+     * @param string $error
+     * @param string $errorDescription
+     * @param int $httpStatusCode
+     * @return JsonResponse
+     */
+    private function errorResponse(int $code, string $error, string $errorDescription, int $httpStatusCode = 400): JsonResponse
+    {
+        return response()->json([
+            'status' => 'error',
+            'code' => $code,
+            'error' => $error,
+            'error_description' => $errorDescription,
+        ], $httpStatusCode);
+    }
+
     /**
      * @param Request $request
      * @return JsonResponse
@@ -25,34 +59,61 @@ class AuthController extends Controller
             'password' => 'required|string|confirmed|min:8',
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        $user = new $this->userModel;
+
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->password = Hash::make($request->password);
+
+        $user->save();
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json(['access_token' => $token, 'token_type' => 'Bearer']);
+        $expiresAt = config('sanctum.expiration')
+            ? Carbon::now()->addMinutes(config('sanctum.expiration'))->toDateTimeString()
+            : null;
+
+        return response()->json([
+            'status' => 'success',
+            'token_type' => 'Bearer',
+            'expires_at' => $expiresAt,
+            'access_token' => $token,
+            'user' => $user,
+        ], 201);
+
     }
 
     /**
      * @param Request $request
      * @return JsonResponse
-     * @throws ValidationException
+     * @throws AuthenticationException
      */
     public function login(Request $request): JsonResponse
     {
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            throw ValidationException::withMessages([
-                'email' => [__('laravel-api-auth::messages.invalid_credentials')],
-            ]);
+        $userModelClass = config('auth.providers.users.model');
+
+        $user = $userModelClass()::where('email', $request->email)->first();
+
+        if (!$user) {
+            return $this->errorResponse(401, 'USER_NOT_FOUND', 'laravel-api-auth::messages.user_not_found', 401);
+        }
+
+        if (!Hash::check($request->password, $user->password)) {
+            return $this->errorResponse(401, 'INVALID_PASSWORD', 'laravel-api-auth::messages.invalid_passwords', 401);
         }
 
         $user = Auth::user();
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json(['access_token' => $token, 'token_type' => 'Bearer']);
+        $expiresAt = config('sanctum.expiration') ?? Carbon::now()->addMinutes(config('sanctum.expiration'));
+
+        return response()->json([
+            'status' => 'success',
+            'token_type' => 'Bearer',
+            'expires_at' => $expiresAt,
+            'access_token' => $token,
+            'user' => $user,
+        ]);
     }
 
     /**

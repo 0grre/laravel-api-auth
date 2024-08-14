@@ -1,15 +1,13 @@
 <?php
 
-use Ogrre\ApiAuth\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
+use Ogrre\ApiAuth\Controllers\ApiAuthController;
 
-// Public routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::prefix(config('api-auth.route_prefix', 'api/auth'))->group(function () {
+    Route::post('/register', [ApiAuthController::class, 'register']);
+    Route::post('/login', [ApiAuthController::class, 'login']);
+    Route::post('/forgot-password', [ApiAuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [ApiAuthController::class, 'resetPassword']);
 
-// Protected routes
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/logout', [ApiAuthController::class, 'logout'])->middleware('auth:sanctum');
 });
