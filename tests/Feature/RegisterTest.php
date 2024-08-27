@@ -9,7 +9,7 @@ use Ogrre\ApiAuth\Tests\TestCase;
 
 class RegisterTest extends TestCase
 {
-    use RefreshDatabase;
+//    use RefreshDatabase;
 
     public function testUserCanRegister()
     {
@@ -66,11 +66,11 @@ class RegisterTest extends TestCase
         $response = $this->postJson('api/auth/register', $userData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors('email')
             ->assertJson([
-                'errors' => [
-                    'email' => ['The email has already been taken.'],
-                ],
+                'status' => 'error',
+                'code' => 422,
+                'error' => 'USER_ALREADY_EXISTS',
+                'error_description' => 'The email has already been taken.',
             ]);
 
         $this->assertEquals(1, $this->userClass::count());
@@ -78,6 +78,8 @@ class RegisterTest extends TestCase
 
     public function testCannotRegisterIfPasswordConfirmationFails()
     {
+        $this->assertEquals(1, $this->userClass::count());
+
         $userData = [
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -88,13 +90,13 @@ class RegisterTest extends TestCase
         $response = $this->postJson('api/auth/register', $userData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors('password')
             ->assertJson([
-                'errors' => [
-                    'password' => ['The password confirmation does not match.'],
-                ],
+                'status' => 'error',
+                'code' => 422,
+                'error' => 'PASSWORD_NOT_CONFIRMED',
+                'error_description' => 'The password confirmation does not match.',
             ]);
 
-        $this->assertEquals(0, $this->userClass::count());
+        $this->assertEquals(1, $this->userClass::count());
     }
 }

@@ -8,7 +8,7 @@
         "illuminate/auth": "^8.0|^9.0|^10.0|^11.0",
         "illuminate/notifications": "^8.0|^9.0|^10.0|^11.0",
         "illuminate/mail": "^8.0|^9.0|^10.0|^11.0",
-        "laravel/sanctum": "^2.15"
+        "laravel/sanctum": "^2.0|^3.0|^4.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.5",

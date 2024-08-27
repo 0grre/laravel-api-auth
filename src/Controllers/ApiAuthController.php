@@ -5,18 +5,17 @@ namespace Ogrre\ApiAuth\Controllers;
 use Carbon\Carbon;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Validation\ValidationException;
-use Ogrre\ApiAuth\Exceptions\ValidationExceptionResponse;
 
 class ApiAuthController
 {
-    use AuthorizesRequests, ValidatesRequests;
+    use AuthorizesRequests, ValidatesRequests, RefreshDatabase;
 
     protected $userModel;
 
@@ -53,18 +52,16 @@ class ApiAuthController
      */
     public function register(Request $request): JsonResponse
     {
-        $request->validate([
+        $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|confirmed|min:8',
+            'password' => 'required|min:8|string|confirmed',
         ]);
 
         $user = new $this->userModel;
-
-        $user->name = $request->name;
-        $user->email = $request->email;
-        $user->password = Hash::make($request->password);
-
+        $user->name = $validatedData['name'];
+        $user->email = $validatedData['email'];
+        $user->password = Hash::make($validatedData['password']);
         $user->save();
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -80,7 +77,6 @@ class ApiAuthController
             'access_token' => $token,
             'user' => $user,
         ], 201);
-
     }
 
     /**

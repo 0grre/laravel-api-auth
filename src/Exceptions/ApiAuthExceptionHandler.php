@@ -3,6 +3,7 @@
 namespace Ogrre\ApiAuth\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -31,7 +32,7 @@ class ApiAuthExceptionHandler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
-        if ($e instanceof ValidationExceptionResponse) {
+        if ($e instanceof ValidationException) {
             return ValidationExceptionResponse::from($e);
         }
 
